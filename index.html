@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* CSS cho giao diện chính */
         body {
             font-family: 'Inter', sans-serif;
         }
@@ -17,12 +18,12 @@
         ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        /* CSS cho phần hiển thị hợp đồng để giống với Google Docs hơn */
+        /* CSS cho phần hiển thị hợp đồng */
         #contractContent {
             background-color: white;
-            line-height: 1.6;
+            line-height: 1.5;
             font-family: 'Times New Roman', Times, serif;
-            font-size: 13pt;
+            font-size: 14pt;
         }
         #contractContent table {
             width: 100%;
@@ -47,6 +48,21 @@
         }
         #contractContent .bold-text {
             font-weight: bold;
+        }
+        /* CSS cho việc in ấn */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #contractContent, #contractContent * {
+                visibility: visible;
+            }
+            #contractContent {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -159,7 +175,7 @@
                             </div>
                             <div>
                                 <label for="donGia" class="block text-sm font-medium text-gray-700">Đơn giá (VNĐ)</label>
-                                <input type="number" id="donGia" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="VD: 2000000">
+                                <input type="number" id="donGia" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="VD: 200000">
                             </div>
                         </div>
                     </fieldset>
@@ -204,60 +220,80 @@
             document.getElementById('ngayKy').valueAsDate = new Date();
             document.getElementById('ngayThucHien').valueAsDate = new Date();
 
-            // --- HÀM ĐỔI SỐ THÀNH CHỮ ---
-            const defaultNumbers = ' hai ba bốn năm sáu bảy tám chín';
-            const chuHangDonVi = (' không' + defaultNumbers).split(' ');
-            const chuHangChuc = ('lẻ mười' + defaultNumbers).split(' ');
-            const chuHangTram = ('không' + defaultNumbers).split(' ');
-
-            function convert_block_three(number) {
-                if (number == '000') return '';
-                var _a = number + '';
-                switch (_a.length) {
-                    case 0: return '';
-                    case 1: return chuHangDonVi[_a];
-                    case 2: return convert_block_two(_a);
-                    case 3:
-                        var chuc_dv = '';
-                        if (_a.slice(1, 3) != '00') chuc_dv = convert_block_two(_a.slice(1, 3));
-                        return chuHangTram[_a[0]] + ' trăm ' + chuc_dv;
-                }
-            }
-
-            function convert_block_two(number) {
-                var dv = chuHangDonVi[number[1]];
-                var chuc = chuHangChuc[number[0]];
-                var append = '';
-                if (number[0] > 0 && number[1] == 5) dv = 'lăm';
-                if (number[0] > 1) {
-                    append = ' mươi';
-                    if (number[1] == 1) dv = ' mốt';
-                }
-                return chuc + append + ' ' + dv;
-            }
-
-            const dvBlock = '1 nghìn triệu tỷ'.split(' ');
+            // --- HÀM ĐỌC SỐ CHÍNH XÁC ---
             function to_vietnamese_string(number) {
-                var str = parseInt(number) + '';
-                var i = 0;
-                var arr = [];
-                var index = str.length;
-                var result = [];
-                if (index == 0 || str == 'NaN') return '';
-                while (index >= 0) {
-                    arr.push(str.substring(index, Math.max(index - 3, 0)));
-                    index -= 3;
-                }
-                for (i = arr.length - 1; i >= 0; i--) {
-                    if (arr[i] != '' && arr[i] != '000') {
-                        result.push(convert_block_three(arr[i]));
-                        if (dvBlock[i]) result.push(dvBlock[i]);
+                const mangso = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+                function dochangchuc(so, daydu) {
+                    var chuoi = "";
+                    var chuc = Math.floor(so / 10);
+                    var donvi = so % 10;
+                    if (chuc > 1) {
+                        chuoi = " " + mangso[chuc] + " mươi";
+                        if (donvi == 1) {
+                            chuoi += " mốt";
+                        }
+                    } else if (chuc == 1) {
+                        chuoi = " mười";
+                        if (donvi == 1) {
+                            chuoi += " một";
+                        }
+                    } else if (daydu && donvi > 0) {
+                        chuoi = " lẻ";
                     }
+                    if (donvi == 5 && chuc > 0) {
+                        chuoi += " lăm";
+                    } else if (donvi > 1 || (donvi == 1 && chuc == 0)) {
+                        chuoi += " " + mangso[donvi];
+                    }
+                    return chuoi;
                 }
-                let rsString = result.join(' ');
-                return rsString.replace(/[0-9]/g, '').replace(/ /g,' ').replace(/ $/,'');
+                function docblock(so, daydu) {
+                    var chuoi = "";
+                    var tram = Math.floor(so / 100);
+                    so = so % 100;
+                    if (daydu || tram > 0) {
+                        chuoi = " " + mangso[tram] + " trăm";
+                        chuoi += dochangchuc(so, true);
+                    } else {
+                        chuoi = dochangchuc(so, false);
+                    }
+                    return chuoi;
+                }
+                function dochangtrieu(so, daydu) {
+                    var chuoi = "";
+                    var trieu = Math.floor(so / 1000000);
+                    so = so % 1000000;
+                    if (trieu > 0) {
+                        chuoi = docblock(trieu, daydu) + " triệu";
+                        daydu = true;
+                    }
+                    var nghin = Math.floor(so / 1000);
+                    so = so % 1000;
+                    if (nghin > 0) {
+                        chuoi += docblock(nghin, daydu) + " nghìn";
+                        daydu = true;
+                    }
+                    if (so > 0) {
+                        chuoi += docblock(so, daydu);
+                    }
+                    return chuoi;
+                }
+                if (number == 0) return mangso[0];
+                var chuoi = "", hauto = "";
+                do {
+                    var ty = number % 1000000000;
+                    number = Math.floor(number / 1000000000);
+                    if (number > 0) {
+                        chuoi = dochangtrieu(ty, true) + hauto + chuoi;
+                    } else {
+                        chuoi = dochangtrieu(ty, false) + hauto + chuoi;
+                    }
+                    hauto = " tỷ";
+                } while (number > 0);
+                let result = chuoi.trim();
+                return result.charAt(0).toUpperCase() + result.slice(1);
             }
-            // --- KẾT THÚC HÀM ĐỔI SỐ THÀNH CHỮ ---
+            // --- KẾT THÚC HÀM ĐỌC SỐ ---
 
 
             contractForm.addEventListener('submit', function (event) {
@@ -265,7 +301,6 @@
 
                 const getValue = (id) => document.getElementById(id).value;
                 const formatCurrency = (num) => num.toLocaleString('vi-VN');
-                const capitalizeFirstLetter = (string) => string.charAt(0).toUpperCase() + string.slice(1).trim();
 
                 const benA = {
                     ten: getValue('benA_ten'),
@@ -295,13 +330,13 @@
                 const donGia = parseFloat(getValue('donGia')) || 0;
 
                 const tongGiaTri = soLuong * donGia;
-                const tongCong = Math.round(tongGiaTri / 0.9);
+                const tongCong = Math.round(tongGiaTri / 0.91); 
                 const thueTNCN = tongCong - tongGiaTri;
                 const thucTeThanhToan = tongGiaTri;
                 
-                const tongCongChu = capitalizeFirstLetter(to_vietnamese_string(tongCong)) + ' đồng';
-                const thueTNCNChu = capitalizeFirstLetter(to_vietnamese_string(thueTNCN)) + ' đồng';
-                const thucTeThanhToanChu = capitalizeFirstLetter(to_vietnamese_string(thucTeThanhToan)) + ' đồng chẵn';
+                const tongCongChu = to_vietnamese_string(tongCong) + ' đồng';
+                const thueTNCNChu = to_vietnamese_string(thueTNCN) + ' đồng';
+                const thucTeThanhToanChu = to_vietnamese_string(thucTeThanhToan) + ' đồng chẵn';
 
                 const formatDate = (dateString) => {
                     const dateObj = new Date(dateString);
@@ -413,7 +448,7 @@
                                 <td style="text-align: right;" class="bold-text">${formatCurrency(tongGiaTri)}</td>
                             </tr>
                             <tr>
-                                <td colspan="4">Thuế TNCN 10%</td>
+                                <td colspan="4">Thuế TNCN 9%</td>
                                 <td style="text-align: right;">${formatCurrency(thueTNCN)}</td>
                             </tr>
                             <tr>
@@ -454,7 +489,7 @@
                     
                     <p class="bold-text">ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG VÀ THANH TOÁN</p>
                     <p>2.1. Giá trị và thời gian thanh toán:</p>
-                    <p style="padding-left: 20px;">a. Tổng chi phí cho công việc mà Bên B thực hiện là <b>${formatCurrency(tongCong)} VNĐ</b> <i>(Bằng chữ: ${tongCongChu}.)</i> - Đã bao gồm thuế TNCN (10%)</p>
+                    <p style="padding-left: 20px;">a. Tổng chi phí cho công việc mà Bên B thực hiện là <b>${formatCurrency(tongCong)} VNĐ</b> <i>(Bằng chữ: ${tongCongChu}.)</i> - Đã bao gồm thuế TNCN (9%)</p>
                     <p style="padding-left: 20px;">b. Nghĩa vụ thuế TNCN của Bên B là: <b>${formatCurrency(thueTNCN)} VNĐ</b> <i>(Bằng chữ: ${thueTNCNChu}.)</i> Bên A có trách nhiệm khấu trừ tiền thuế tại nguồn để nộp thuế TNCN cho bên B.</p>
                     <p style="padding-left: 20px;">c. Giá trị Hợp đồng Bên A thực tế thanh toán cho Bên B sau khi đã khấu trừ thuế TNCN cho Bên B là: <b>${formatCurrency(thucTeThanhToan)} VNĐ</b> <i>(Bằng chữ: ${thucTeThanhToanChu}).</i></p>
                     <p style="padding-left: 20px;">d. Trong quá trình thực hiện Hợp đồng, nếu có phát sinh bất kỳ khoản chi phí nào ngoài giá trị Hợp đồng nêu trên, Bên B phải thông báo ngay lập tức cho Bên A và chỉ thực hiện phần công việc phát sinh chi phí đó khi nhận được sự đồng ý bằng văn bản của Bên A. Bên A không có trách nhiệm thanh toán cho Bên B bất kỳ khoản chi phí nào được triển khai khi chưa nhận được sự chấp thuận của Bên A.</p>
@@ -517,6 +552,16 @@
                 `;
 
                 contractContent.innerHTML = contractHTML;
+                
+                // --- ĐÃ SỬA: THÊM ĐOẠN MÃ NÀY ĐỂ ÉP KIỂU DÃN DÒNG KHI SAO CHÉP ---
+                // Áp dụng inline style cho tất cả các thẻ p, h2, và td bên trong nội dung hợp đồng
+                // để đảm bảo khoảng cách dòng là 1.5 khi sao chép qua Word/Docs.
+                const elementsToStyle = contractContent.querySelectorAll('p, h2, td, th');
+                elementsToStyle.forEach(el => {
+                    el.style.lineHeight = '1.5';
+                });
+                // --- KẾT THÚC ĐOẠN MÃ SỬA ---
+
                 outputContainer.classList.remove('hidden');
             });
 
